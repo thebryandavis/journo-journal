@@ -1,0 +1,34 @@
+/* Journo Journal Browser Extension - Content Styles */
+
+.journo-highlight {
+  background-color: #FFB800 !important;
+  opacity: 0.3 !important;
+  transition: opacity 0.2s ease;
+}
+
+.journo-highlight:hover {
+  opacity: 0.5 !important;
+}
+
+/* Quick capture button that appears on text selection */
+.journo-quick-capture-btn {
+  position: absolute;
+  background: #1A1A1A;
+  color: #F5F1E8;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 999999;
+  transition: all 0.2s;
+}
+
+.journo-quick-capture-btn:hover {
+  background: #FFB800;
+  color: #1A1A1A;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
