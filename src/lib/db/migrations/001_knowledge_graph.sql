@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS note_relationships (
 CREATE TABLE IF NOT EXISTS note_embeddings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   note_id UUID NOT NULL UNIQUE REFERENCES notes(id) ON DELETE CASCADE,
-  embedding VECTOR(1536),
+  embedding JSONB,
+  -- Store as JSON array of 1536 floats (pgvector extension not required)
   -- OpenAI text-embedding-3-small dimension
   model VARCHAR(100) DEFAULT 'text-embedding-3-small',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -125,7 +125,8 @@ CREATE TABLE shares (
   shared_by UUID REFERENCES users(id) ON DELETE CASCADE,
   shared_with UUID REFERENCES users(id) ON DELETE CASCADE,
   permissions VARCHAR(50) DEFAULT 'view', -- view, edit
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_share UNIQUE (note_id, shared_with)
 );
 
 -- Embeddings table (for AI semantic search)

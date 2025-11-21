@@ -16,7 +16,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
-import { Button, Badge } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { RefreshCw, Maximize2, Download, Info } from 'lucide-react';
 
 interface GraphNode {
@@ -67,11 +67,13 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
 
     try {
       const response = await fetch('/api/graph?limit=100&minStrength=0.5');
-      const data: GraphData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch graph data');
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error || 'Failed to fetch graph data');
       }
+
+      const data: GraphData = await response.json();
 
       // Transform data into React Flow format
       const flowNodes: Node[] = data.nodes.map((node, index) => {
@@ -179,13 +181,15 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to rebuild graph');
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error || 'Failed to rebuild graph');
       }
 
       // Refresh graph data
       await fetchGraphData();
     } catch (err: any) {
       setError(err.message);
+      setLoading(false);
     }
   };
 

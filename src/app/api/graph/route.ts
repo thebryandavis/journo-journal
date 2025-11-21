@@ -12,10 +12,15 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = (session.user as any).id;
-    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '100');
-    const minStrength = parseFloat(
+
+    // Validate and sanitize input parameters
+    const limitParam = parseInt(request.nextUrl.searchParams.get('limit') || '100');
+    const limit = Math.min(Math.max(limitParam, 1), 1000); // Clamp between 1 and 1000
+
+    const minStrengthParam = parseFloat(
       request.nextUrl.searchParams.get('minStrength') || '0.5'
     );
+    const minStrength = Math.min(Math.max(minStrengthParam, 0), 1); // Clamp between 0 and 1
 
     const graphData = await getKnowledgeGraphData(userId, {
       limit,
@@ -35,7 +40,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/graph/rebuild - Rebuild entire knowledge graph
+// POST /api/graph - Rebuild entire knowledge graph
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession();
