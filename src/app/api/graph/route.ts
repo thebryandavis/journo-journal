@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getKnowledgeGraphData, rebuildUserKnowledgeGraph } from '@/lib/ai/knowledge-graph';
+import { authOptions } from "@/lib/auth";
 
 // GET /api/graph - Get knowledge graph data for visualization
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 // POST /api/graph - Rebuild entire knowledge graph
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
