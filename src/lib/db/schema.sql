@@ -125,16 +125,11 @@ CREATE TABLE shares (
   shared_by UUID REFERENCES users(id) ON DELETE CASCADE,
   shared_with UUID REFERENCES users(id) ON DELETE CASCADE,
   permissions VARCHAR(50) DEFAULT 'view', -- view, edit
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_share UNIQUE (note_id, shared_with)
 );
 
--- Embeddings table (for AI semantic search)
-CREATE TABLE embeddings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
-  embedding vector(1536), -- OpenAI embedding dimension
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Note: embeddings table is created by migration 001 (note_embeddings with JSONB)
 
 -- Create indexes for better performance
 CREATE INDEX idx_notes_user_id ON notes(user_id);
