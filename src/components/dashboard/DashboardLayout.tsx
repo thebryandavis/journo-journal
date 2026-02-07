@@ -21,6 +21,8 @@ import {
   Menu,
   X,
   Network,
+  Mic,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -39,6 +41,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'All Notes', href: '/dashboard/notes', icon: FileText },
+    { name: 'Interviews', href: '/dashboard/interviews', icon: Mic },
+    { name: 'Fact Checks', href: '/dashboard/fact-checks', icon: Shield },
     { name: 'Knowledge Graph', href: '/dashboard/graph', icon: Network },
     { name: 'Favorites', href: '/dashboard/favorites', icon: Star },
     { name: 'Folders', href: '/dashboard/folders', icon: Folder },

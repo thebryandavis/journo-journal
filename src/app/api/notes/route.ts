@@ -12,8 +12,18 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = (session.user as any).id;
+    const { searchParams } = new URL(request.url);
+    const typeFilter = searchParams.get('type');
 
-    // Fetch notes with tags
+    // Build query with optional type filter
+    const params: any[] = [userId];
+    let whereClause = 'WHERE n.user_id = $1';
+    if (typeFilter) {
+      params.push(typeFilter);
+      whereClause += ` AND n.type = $${params.length}`;
+    }
+
+    // Fetch notes with tags and attachments
     const notesResult = await query(
       `SELECT
         n.*,
@@ -26,13 +36,26 @@ export async function GET(request: NextRequest) {
             )
           ) FILTER (WHERE t.id IS NOT NULL),
           '[]'
-        ) as tags
+        ) as tags,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', a.id,
+              'file_name', a.file_name,
+              'file_url', a.file_url,
+              'file_type', a.file_type,
+              'metadata', a.metadata
+            )
+          ) FILTER (WHERE a.id IS NOT NULL),
+          '[]'
+        ) as attachments
       FROM notes n
       LEFT JOIN tags t ON n.id = t.note_id
-      WHERE n.user_id = $1
+      LEFT JOIN attachments a ON n.id = a.note_id
+      ${whereClause}
       GROUP BY n.id
       ORDER BY n.updated_at DESC`,
-      [userId]
+      params
     );
 
     return NextResponse.json({

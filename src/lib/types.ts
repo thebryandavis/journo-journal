@@ -117,3 +117,55 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+// --- Transcription Types ---
+
+export interface TranscriptSegment {
+  speaker: number;
+  text: string;
+  start: number;
+  end: number;
+  confidence: number;
+}
+
+// --- Fact-Checking Types ---
+
+export type FactCheckStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ClaimVerdict = 'verified' | 'false' | 'unverified' | 'mixed' | 'partially_verified';
+
+export interface FactCheck {
+  id: string;
+  note_id: string;
+  user_id: string;
+  status: FactCheckStatus;
+  summary?: string;
+  total_claims: number;
+  verified_count: number;
+  false_count: number;
+  unverified_count: number;
+  mixed_count: number;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+  claims?: FactCheckClaim[];
+}
+
+export interface FactCheckClaim {
+  id: string;
+  fact_check_id: string;
+  claim_text: string;
+  claim_context?: string;
+  verdict: ClaimVerdict;
+  confidence: number;
+  explanation?: string;
+  sources: ClaimSource[];
+  search_queries: string[];
+  created_at: string;
+}
+
+export interface ClaimSource {
+  url: string;
+  title: string;
+  snippet: string;
+  relevance_score: number;
+}

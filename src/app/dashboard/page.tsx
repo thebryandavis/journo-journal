@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { NotesList } from '@/components/notes/NotesList';
 import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
+import { AudioUploadModal } from '@/components/transcribe/AudioUploadModal';
 import { Button } from '@/components/ui';
-import { Plus, Search, Grid, List } from 'lucide-react';
+import { Plus, Search, Grid, List, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Note } from '@/lib/types';
 
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -49,6 +51,11 @@ export default function DashboardPage() {
   const handleNoteCreated = (newNote: Note) => {
     setNotes([newNote, ...notes]);
     setIsCreateModalOpen(false);
+  };
+
+  const handleTranscribed = (newNote: Note) => {
+    setNotes([newNote, ...notes]);
+    setIsUploadModalOpen(false);
   };
 
   const handleNoteDeleted = (noteId: string) => {
@@ -115,6 +122,15 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {/* Upload Interview Button */}
+            <Button
+              variant="secondary"
+              icon={<Mic className="w-5 h-5" />}
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              Upload Interview
+            </Button>
+
             {/* Create Note Button */}
             <Button
               variant="primary"
@@ -166,6 +182,13 @@ export default function DashboardPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onNoteCreated={handleNoteCreated}
+      />
+
+      {/* Upload Interview Modal */}
+      <AudioUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onTranscribed={handleTranscribed}
       />
     </DashboardLayout>
   );
