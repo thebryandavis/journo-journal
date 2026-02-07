@@ -21,6 +21,7 @@ export interface Workspace {
 
 export type NoteType = 'note' | 'idea' | 'research' | 'interview';
 export type NoteStatus = 'draft' | 'in-progress' | 'published';
+export type ProjectStatus = 'active' | 'archived';
 
 export interface Note {
   id: string;
@@ -39,6 +40,20 @@ export interface Note {
   tags?: Tag[];
   attachments?: Attachment[];
   sources?: Source[];
+  projects?: Pick<Project, 'id' | 'name'>[];
+}
+
+export interface Project {
+  id: string;
+  user_id: string;
+  workspace_id: string;
+  name: string;
+  description?: string;
+  status: ProjectStatus;
+  note_count?: number;
+  notes?: Note[];
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Folder {

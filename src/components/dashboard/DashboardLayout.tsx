@@ -7,7 +7,6 @@ import {
   BookOpen,
   Home,
   FileText,
-  Folder,
   Users,
   Calendar,
   Settings,
@@ -45,7 +44,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { name: 'Fact Checks', href: '/dashboard/fact-checks', icon: Shield },
     { name: 'Knowledge Graph', href: '/dashboard/graph', icon: Network },
     { name: 'Favorites', href: '/dashboard/favorites', icon: Star },
-    { name: 'Folders', href: '/dashboard/folders', icon: Folder },
     { name: 'Tags', href: '/dashboard/tags', icon: Tag },
     { name: 'Sources', href: '/dashboard/sources', icon: Users },
     { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
@@ -82,7 +80,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           >
             <nav className="p-4 space-y-1">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href === '/dashboard'
+                    ? pathname === '/dashboard' || pathname.startsWith('/dashboard/projects/')
+                    : pathname === item.href;
                 return (
                   <Link
                     key={item.name}
@@ -130,7 +130,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = item.href === '/dashboard'
+                ? pathname === '/dashboard' || pathname.startsWith('/dashboard/projects/')
+                : pathname === item.href;
               return (
                 <Link
                   key={item.name}

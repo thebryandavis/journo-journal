@@ -11,12 +11,16 @@ interface CreateNoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNoteCreated: (note: Note) => void;
+  projectId?: string;
+  projectName?: string;
 }
 
 export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
   isOpen,
   onClose,
   onNoteCreated,
+  projectId,
+  projectName,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -45,6 +49,7 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
           content,
           type,
           tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+          ...(projectId && { project_id: projectId }),
         }),
       });
 
@@ -110,7 +115,9 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
                         Create New Note
                       </h2>
                       <p className="text-sm text-ink/60 font-dm">
-                        Capture your story idea
+                        {projectName
+                          ? `Adding to: ${projectName}`
+                          : 'Capture your story idea'}
                       </p>
                     </div>
                   </div>

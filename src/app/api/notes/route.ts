@@ -14,13 +14,22 @@ export async function GET(request: NextRequest) {
     const userId = (session.user as any).id;
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type');
+    const unassigned = searchParams.get('unassigned');
+    const projectId = searchParams.get('project_id');
 
-    // Build query with optional type filter
+    // Build query with optional filters
     const params: any[] = [userId];
     let whereClause = 'WHERE n.user_id = $1';
     if (typeFilter) {
       params.push(typeFilter);
       whereClause += ` AND n.type = $${params.length}`;
+    }
+    if (unassigned === 'true') {
+      whereClause += ` AND NOT EXISTS (SELECT 1 FROM project_notes pn WHERE pn.note_id = n.id)`;
+    }
+    if (projectId) {
+      params.push(projectId);
+      whereClause += ` AND EXISTS (SELECT 1 FROM project_notes pn WHERE pn.note_id = n.id AND pn.project_id = $${params.length})`;
     }
 
     // Fetch notes with tags and attachments
@@ -83,7 +92,7 @@ export async function POST(request: NextRequest) {
     const workspaceId = (session.user as any).workspaceId;
     const body = await request.json();
 
-    const { title, content, type = 'note', tags = [] } = body;
+    const { title, content, type = 'note', tags = [], project_id } = body;
 
     if (!title?.trim()) {
       return NextResponse.json(
@@ -116,6 +125,18 @@ export async function POST(request: NextRequest) {
           [note.id, tagName, false]
         );
       }
+    }
+
+    // If project_id provided, link note to project
+    if (project_id) {
+      await query(
+        `INSERT INTO project_notes (project_id, note_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [project_id, note.id]
+      );
+      await query(
+        'UPDATE projects SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [project_id]
+      );
     }
 
     // Fetch note with tags
