@@ -4,21 +4,26 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { NotesList } from '@/components/notes/NotesList';
+import { NoteCard } from '@/components/notes/NoteCard';
 import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
+import { AudioUploadModal } from '@/components/transcribe/AudioUploadModal';
+import { ProjectCard } from '@/components/projects/ProjectCard';
+import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { Button } from '@/components/ui';
-import { Plus, Search, Grid, List } from 'lucide-react';
+import { Plus, Mic, FolderPlus, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Note } from '@/lib/types';
+import { Note, Project } from '@/lib/types';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [unassignedNotes, setUnassignedNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isCreateNoteOpen, setIsCreateNoteOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -28,31 +33,68 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchNotes();
+      fetchData();
     }
   }, [status]);
 
-  const fetchNotes = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/notes');
-      const data = await response.json();
-      if (data.success) {
-        setNotes(data.notes);
-      }
+      const [projectsRes, notesRes] = await Promise.all([
+        fetch('/api/projects?status=active'),
+        fetch('/api/notes?unassigned=true'),
+      ]);
+      const [projectsData, notesData] = await Promise.all([
+        projectsRes.json(),
+        notesRes.json(),
+      ]);
+      if (projectsData.success) setProjects(projectsData.projects);
+      if (notesData.success) setUnassignedNotes(notesData.notes);
     } catch (error) {
-      console.error('Failed to fetch notes:', error);
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleNoteCreated = (newNote: Note) => {
-    setNotes([newNote, ...notes]);
-    setIsCreateModalOpen(false);
+  const handleProjectCreated = (project: Project) => {
+    setProjects([project, ...projects]);
+    setIsCreateProjectOpen(false);
+  };
+
+  const handleNoteCreated = (note: Note) => {
+    setUnassignedNotes([note, ...unassignedNotes]);
+    setIsCreateNoteOpen(false);
+  };
+
+  const handleTranscribed = (note: Note) => {
+    setUnassignedNotes([note, ...unassignedNotes]);
+    setIsUploadModalOpen(false);
   };
 
   const handleNoteDeleted = (noteId: string) => {
-    setNotes(notes.filter(note => note.id !== noteId));
+    setUnassignedNotes(unassignedNotes.filter((n) => n.id !== noteId));
+  };
+
+  const handleProjectAction = async (
+    projectId: string,
+    action: 'archive' | 'unarchive' | 'delete'
+  ) => {
+    try {
+      if (action === 'delete') {
+        await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+      } else {
+        await fetch(`/api/projects/${projectId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: action === 'archive' ? 'archived' : 'active',
+          }),
+        });
+      }
+      setProjects(projects.filter((p) => p.id !== projectId));
+    } catch (error) {
+      console.error(`Failed to ${action} project:`, error);
+    }
   };
 
   if (status === 'loading' || loading) {
@@ -68,104 +110,155 @@ export default function DashboardPage() {
     );
   }
 
+  const hasContent = projects.length > 0 || unassignedNotes.length > 0;
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="font-crimson font-bold text-4xl text-ink mb-2">
-              Your Stories
+              Your Newsroom
             </h1>
             <p className="text-ink/60 font-dm">
-              {notes.length} {notes.length === 1 ? 'note' : 'notes'} in your workspace
+              {projects.length} active {projects.length === 1 ? 'project' : 'projects'}
+              {unassignedNotes.length > 0 &&
+                ` · ${unassignedNotes.length} unassigned ${unassignedNotes.length === 1 ? 'note' : 'notes'}`}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative flex-1 md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink/40" />
-              <input
-                type="text"
-                placeholder="Search notes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-ink/20 rounded-sm focus:outline-none focus:ring-2 focus:ring-highlight-amber font-dm"
-              />
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex items-center gap-1 border border-ink/20 rounded-sm p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-sm transition-colors ${
-                  viewMode === 'grid' ? 'bg-ink text-newsprint' : 'text-ink/60 hover:bg-ink/5'
-                }`}
-              >
-                <Grid className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-sm transition-colors ${
-                  viewMode === 'list' ? 'bg-ink text-newsprint' : 'text-ink/60 hover:bg-ink/5'
-                }`}
-              >
-                <List className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Create Note Button */}
             <Button
-              variant="primary"
+              variant="secondary"
+              icon={<Mic className="w-5 h-5" />}
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              Upload Interview
+            </Button>
+            <Button
+              variant="outline"
               icon={<Plus className="w-5 h-5" />}
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => setIsCreateNoteOpen(true)}
             >
               New Note
+            </Button>
+            <Button
+              variant="primary"
+              icon={<FolderPlus className="w-5 h-5" />}
+              onClick={() => setIsCreateProjectOpen(true)}
+            >
+              New Project
             </Button>
           </div>
         </div>
 
-        {/* Notes List */}
-        {notes.length === 0 ? (
+        {!hasContent ? (
+          /* Empty State */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-20"
           >
-            <div className="w-24 h-24 bg-highlight-amber/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Plus className="w-12 h-12 text-highlight-amber" />
+            <div className="w-24 h-24 bg-editorial-blue/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FolderPlus className="w-12 h-12 text-editorial-blue" />
             </div>
             <h3 className="font-crimson font-bold text-2xl text-ink mb-3">
-              Start Your First Story
+              Create Your First Project
             </h3>
             <p className="text-ink/60 font-dm mb-6 max-w-md mx-auto">
-              Capture ideas, research, interviews, and more. Your AI-powered newsroom awaits.
+              Projects group your notes, research, and interviews around a single story. Start by creating a project for your current article.
             </p>
             <Button
               variant="primary"
-              icon={<Plus className="w-5 h-5" />}
-              onClick={() => setIsCreateModalOpen(true)}
+              icon={<FolderPlus className="w-5 h-5" />}
+              onClick={() => setIsCreateProjectOpen(true)}
             >
-              Create Your First Note
+              Create Project
             </Button>
           </motion.div>
         ) : (
-          <NotesList
-            notes={notes}
-            searchQuery={searchQuery}
-            viewMode={viewMode}
-            onNoteDeleted={handleNoteDeleted}
-            onNoteUpdated={fetchNotes}
-          />
+          <>
+            {/* Active Projects */}
+            {projects.length > 0 && (
+              <section>
+                <h2 className="font-crimson font-bold text-2xl text-ink mb-4">
+                  Active Projects
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {projects.map((project, index) => (
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.3 }}
+                    >
+                      <ProjectCard
+                        project={project}
+                        onArchive={(id) => handleProjectAction(id, 'archive')}
+                        onUnarchive={(id) => handleProjectAction(id, 'unarchive')}
+                        onDelete={(id) => handleProjectAction(id, 'delete')}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Unassigned Notes */}
+            {unassignedNotes.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-crimson font-bold text-2xl text-ink">
+                    Unassigned Notes
+                  </h2>
+                  <Link
+                    href="/dashboard/notes?tab=unassigned"
+                    className="flex items-center gap-1 text-sm text-editorial-blue hover:underline font-dm"
+                  >
+                    View All
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {unassignedNotes.slice(0, 6).map((note, index) => (
+                    <motion.div
+                      key={note.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.3 }}
+                    >
+                      <NoteCard
+                        note={note}
+                        viewMode="grid"
+                        onDeleted={handleNoteDeleted}
+                        onUpdated={fetchData}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 
-      {/* Create Note Modal */}
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onProjectCreated={handleProjectCreated}
+      />
+
       <CreateNoteModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        isOpen={isCreateNoteOpen}
+        onClose={() => setIsCreateNoteOpen(false)}
         onNoteCreated={handleNoteCreated}
+      />
+
+      <AudioUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onTranscribed={handleTranscribed}
       />
     </DashboardLayout>
   );

@@ -183,6 +183,98 @@ class OpenAIService {
       .filter((line: string) => line.length > 0)
       .slice(0, 5);
   }
+  // Extract verifiable claims from note content for fact-checking
+  async extractClaims(content: string, maxClaims: number = 8): Promise<Array<{
+    claim: string;
+    context: string;
+    searchQuery: string;
+  }>> {
+    const messages: OpenAIMessage[] = [
+      {
+        role: 'system',
+        content: `You are a fact-checking assistant for journalists. Extract specific, verifiable factual claims from the provided text.
+
+For each claim, provide:
+- "claim": The specific factual statement (one sentence)
+- "context": The surrounding text that gives this claim context (one sentence)
+- "searchQuery": A web search query that would help verify this claim
+
+Focus on: statistics, dates, quotes, named events, specific facts, attributions.
+Skip: opinions, predictions, subjective statements, common knowledge.
+
+Return a JSON array. Maximum ${maxClaims} claims. Return ONLY valid JSON, no other text.`,
+      },
+      {
+        role: 'user',
+        content: content.slice(0, 4000),
+      },
+    ];
+
+    const response = await this.createChatCompletion(messages, {
+      temperature: 0.2,
+      max_tokens: 2000,
+    });
+
+    const text = response.choices[0].message.content.trim();
+    try {
+      return JSON.parse(text);
+    } catch {
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      return [];
+    }
+  }
+
+  // Verify a single claim against source content
+  async verifyClaim(
+    claim: string,
+    sourceTexts: Array<{ url: string; title: string; content: string }>
+  ): Promise<{
+    verdict: string;
+    confidence: number;
+    explanation: string;
+  }> {
+    const sourceSummary = sourceTexts
+      .map((s, i) => `[Source ${i + 1}: ${s.title}]\n${s.content.slice(0, 1500)}`)
+      .join('\n\n');
+
+    const messages: OpenAIMessage[] = [
+      {
+        role: 'system',
+        content: `You are a fact-checking assistant. Compare the given claim against the provided source texts.
+
+Return a JSON object with:
+- "verdict": One of "verified", "false", "partially_verified", "mixed", "unverified"
+  - "verified": Sources clearly support the claim
+  - "false": Sources clearly contradict the claim
+  - "partially_verified": Some aspects supported, some not addressed
+  - "mixed": Sources give conflicting information
+  - "unverified": Sources don't contain enough information to verify
+- "confidence": A float from 0.0 to 1.0 indicating how confident you are
+- "explanation": A 1-2 sentence explanation of your verdict, citing which sources
+
+Return ONLY valid JSON, no other text.`,
+      },
+      {
+        role: 'user',
+        content: `Claim: "${claim}"\n\nSources:\n${sourceSummary}`,
+      },
+    ];
+
+    const response = await this.createChatCompletion(messages, {
+      temperature: 0.1,
+      max_tokens: 300,
+    });
+
+    const text = response.choices[0].message.content.trim();
+    try {
+      return JSON.parse(text);
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      return { verdict: 'unverified', confidence: 0, explanation: 'Failed to parse verification result.' };
+    }
+  }
 }
 
 export const openai = new OpenAIService();

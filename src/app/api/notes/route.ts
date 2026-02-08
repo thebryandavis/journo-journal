@@ -12,8 +12,27 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = (session.user as any).id;
+    const { searchParams } = new URL(request.url);
+    const typeFilter = searchParams.get('type');
+    const unassigned = searchParams.get('unassigned');
+    const projectId = searchParams.get('project_id');
 
-    // Fetch notes with tags
+    // Build query with optional filters
+    const params: any[] = [userId];
+    let whereClause = 'WHERE n.user_id = $1';
+    if (typeFilter) {
+      params.push(typeFilter);
+      whereClause += ` AND n.type = $${params.length}`;
+    }
+    if (unassigned === 'true') {
+      whereClause += ` AND NOT EXISTS (SELECT 1 FROM project_notes pn WHERE pn.note_id = n.id)`;
+    }
+    if (projectId) {
+      params.push(projectId);
+      whereClause += ` AND EXISTS (SELECT 1 FROM project_notes pn WHERE pn.note_id = n.id AND pn.project_id = $${params.length})`;
+    }
+
+    // Fetch notes with tags and attachments
     const notesResult = await query(
       `SELECT
         n.*,
@@ -26,13 +45,26 @@ export async function GET(request: NextRequest) {
             )
           ) FILTER (WHERE t.id IS NOT NULL),
           '[]'
-        ) as tags
+        ) as tags,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', a.id,
+              'file_name', a.file_name,
+              'file_url', a.file_url,
+              'file_type', a.file_type,
+              'metadata', a.metadata
+            )
+          ) FILTER (WHERE a.id IS NOT NULL),
+          '[]'
+        ) as attachments
       FROM notes n
       LEFT JOIN tags t ON n.id = t.note_id
-      WHERE n.user_id = $1
+      LEFT JOIN attachments a ON n.id = a.note_id
+      ${whereClause}
       GROUP BY n.id
       ORDER BY n.updated_at DESC`,
-      [userId]
+      params
     );
 
     return NextResponse.json({
@@ -60,7 +92,7 @@ export async function POST(request: NextRequest) {
     const workspaceId = (session.user as any).workspaceId;
     const body = await request.json();
 
-    const { title, content, type = 'note', tags = [] } = body;
+    const { title, content, type = 'note', tags = [], project_id } = body;
 
     if (!title?.trim()) {
       return NextResponse.json(
@@ -93,6 +125,18 @@ export async function POST(request: NextRequest) {
           [note.id, tagName, false]
         );
       }
+    }
+
+    // If project_id provided, link note to project
+    if (project_id) {
+      await query(
+        `INSERT INTO project_notes (project_id, note_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [project_id, note.id]
+      );
+      await query(
+        'UPDATE projects SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [project_id]
+      );
     }
 
     // Fetch note with tags

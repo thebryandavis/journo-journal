@@ -1,0 +1,4 @@
+[    3031ms] Invalid or unexpected token
+[    3286ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/favicon.ico:0
+[   94366ms] [WARNING] Tiptap Error: SSR has been detected, please set `immediatelyRender` explicitly to `false` to avoid hydration mismatches. @ webpack-internal:///(app-pages-browser)/./node_modules/@tiptap/react/dist/index.js:986
+[   94366ms] [WARNING] Tiptap Error: SSR has been detected, please set `immediatelyRender` explicitly to `false` to avoid hydration mismatches. @ webpack-internal:///(app-pages-browser)/./node_modules/@tiptap/react/dist/index.js:986

@@ -1,6 +1,6 @@
 # 🚀 Recall.ai Features - Implementation Progress
 
-**Last Updated:** 2025-01-20
+**Last Updated:** 2026-02-06
 **Status:** In Progress - 40% Complete
 
 ---
@@ -205,26 +205,46 @@
 
 ## 🔧 TECHNICAL DEBT
 
-### Issues to Address:
+### Issues Resolved (2026-02-06):
 
-1. **PostgreSQL Vector Extension**
-   - Need to install `pgvector` extension
-   - Alternative: Store embeddings as JSONB (current approach)
+1. **getServerSession auth bug** — FIXED
+   - All 18 API routes were calling `getServerSession()` without `authOptions`
+   - This caused sessions to lack custom `id`/`workspaceId` fields, returning empty results for all user queries
+   - Extracted shared auth config to `src/lib/auth.ts`, updated all routes to `getServerSession(authOptions)`
 
-2. **Performance Optimization**
+2. **pgvector dependency** — RESOLVED
+   - Removed `embeddings` table (required `vector(1536)` type) from `schema.sql`
+   - Migration 001 already provides correct `note_embeddings` table using JSONB
+   - Cosine similarity runs in JS (`src/lib/ai/knowledge-graph.ts`), not the DB
+
+3. **Local dev setup** — RESOLVED
+   - Created `scripts/seed.ts` with realistic journalism test data
+   - PostgreSQL 15 via Homebrew at `/opt/homebrew/opt/postgresql@15/bin/`
+   - `psql` and `createdb` not on PATH; must use full path
+
+### Issues Remaining:
+
+1. **Performance Optimization**
    - Add caching for graph queries
    - Implement lazy loading for large graphs
-   - Optimize embedding calculations
+   - JSONB embedding comparison won't scale past hundreds of notes
 
-3. **Error Handling**
+2. **Error Handling**
    - Add retry logic for OpenAI API calls
-   - Improve error messages
-   - Add loading states
+   - Dashboard errors only logged to console, not shown to user
+   - Missing `finally` block in `KnowledgeGraphView.tsx` `rebuildGraph()` loading state
 
-4. **Testing**
+3. **Testing**
+   - No test framework configured at all
    - Unit tests for SM-2 algorithm
    - Integration tests for graph APIs
    - E2E tests for review flow
+
+4. **Stub pages need implementation**
+   - `/dashboard/notes` — has UI shell but no data fetching
+   - `/dashboard/favorites` — "Coming Soon" stub
+   - `/dashboard/folders` — "Coming Soon" stub
+   - `/dashboard/tags` — "Coming Soon" stub
 
 ---
 
